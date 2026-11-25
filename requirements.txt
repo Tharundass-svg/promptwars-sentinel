@@ -1,0 +1,6 @@
+# PromptWars Sentinel uses zero external runtime dependencies!
+# Python standard library powers the entire REST API, threat scanning,
+# adversary combat simulation, and static file server.
+#
+# Optional test runners (if preferred over python -m unittest):
+# pytest>=8.0.0
