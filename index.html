@@ -626,11 +626,20 @@ RULES & CONSTRAINTS:
       if (el) el.textContent = msg;
     }
 
+    function validateClientInput(raw) {
+      if (!raw || typeof raw !== 'string') return null;
+      const trimmed = raw.trim();
+      if (trimmed.length === 0) return null;
+      if (trimmed.length > 8000) return trimmed.slice(0, 8000);
+      return trimmed;
+    }
+
     async function runAudit() {
-      const prompt = document.getElementById('prompt-input').value.trim();
+      const rawPrompt = document.getElementById('prompt-input').value;
+      const prompt = validateClientInput(rawPrompt);
       const persona = document.getElementById('persona-select').value;
       if (!prompt) {
-        alert("Please enter a prompt first!");
+        alert("Please enter a prompt between 1 and 8000 characters.");
         return;
       }
       announce("Auditing prompt security and clarity...");
@@ -645,7 +654,7 @@ RULES & CONSTRAINTS:
         renderAudit(data);
         announce("Audit completed.");
       } catch (err) {
-        console.error(err);
+        announce("Network error while connecting to PromptWars server.");
         alert("Error connecting to PromptWars server.");
       }
     }
@@ -683,7 +692,8 @@ RULES & CONSTRAINTS:
     }
 
     async function runBattle() {
-      const prompt = document.getElementById('prompt-input').value.trim();
+      const rawPrompt = document.getElementById('prompt-input').value;
+      const prompt = validateClientInput(rawPrompt);
       if (!prompt) {
         alert("Please enter a prompt to battle-test!");
         return;
@@ -701,7 +711,7 @@ RULES & CONSTRAINTS:
         renderBattle(battle);
         announce(`Battle finished: ${battle.verdict}`);
       } catch (err) {
-        console.error(err);
+        announce("Battle simulation communication error.");
       }
     }
 
@@ -731,7 +741,8 @@ RULES & CONSTRAINTS:
     }
 
     async function runOptimize() {
-      const prompt = document.getElementById('prompt-input').value.trim();
+      const rawPrompt = document.getElementById('prompt-input').value;
+      const prompt = validateClientInput(rawPrompt);
       const persona = document.getElementById('persona-select').value;
       if (!prompt) {
         alert("Please enter a prompt to optimize!");
@@ -761,7 +772,7 @@ RULES & CONSTRAINTS:
 
         announce(`Prompt optimized! Elo increased by +${opt.elo_gain} points.`);
       } catch (err) {
-        console.error(err);
+        announce("Prompt optimization communication error.");
       }
     }
 

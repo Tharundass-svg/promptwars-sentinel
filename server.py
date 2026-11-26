@@ -62,17 +62,20 @@ COMPRESSIBLE_PREFIXES = ("text/", "application/json", "application/javascript",
                          "image/svg+xml")
 
 SECURITY_HEADERS: Dict[str, str] = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "no-referrer",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
     "Cross-Origin-Opener-Policy": "same-origin",
     "Cross-Origin-Resource-Policy": "same-origin",
     "Content-Security-Policy": (
         "default-src 'self'; script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-        "connect-src 'self'; object-src 'none'; base-uri 'none'; "
-        "form-action 'self'; frame-ancestors 'none'"
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; connect-src 'self'; object-src 'none'; "
+        "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
     ),
 }
 
@@ -343,8 +346,14 @@ class PromptWarsHandler(BaseHTTPRequestHandler):
             return
 
         if not self.server.limiter.allow(self._client_id()):
-            self._send_error_json(429, "Too many requests", close=True,
-                                  extra={"Retry-After": "1"})
+            self._send_error_json(
+                429, "Too many requests", close=True,
+                extra={
+                    "Retry-After": "1",
+                    "X-RateLimit-Limit": str(int(self.server.limiter.burst)),
+                    "X-RateLimit-Remaining": "0"
+                }
+            )
             return
 
         try:
@@ -361,7 +370,10 @@ class PromptWarsHandler(BaseHTTPRequestHandler):
             logger.exception("Unhandled error in %s", path)
             self._send_error_json(500, "Internal server error")
             return
-        self._send_json(200, result)
+        self._send_json(200, result, extra={
+            "X-RateLimit-Limit": str(int(self.server.limiter.burst)),
+            "X-RateLimit-Remaining": "1"
+        })
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         logger.info("%s - %s", self.address_string(), format % args)

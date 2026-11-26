@@ -107,9 +107,10 @@ class TestStaticAndHealth(ServerTestCase):
         resp, _ = self.request("GET", "/")
         self.assertEqual(resp.status, 200)
         for header in ("Content-Security-Policy", "X-Content-Type-Options",
-                       "X-Frame-Options", "Referrer-Policy"):
+                       "X-Frame-Options", "Referrer-Policy", "Strict-Transport-Security"):
             self.assertIsNotNone(resp.getheader(header), header)
         self.assertEqual(resp.getheader("X-Content-Type-Options"), "nosniff")
+        self.assertIn("max-age", resp.getheader("Strict-Transport-Security"))
 
     def test_gzip_negotiation(self):
         resp, data = self.request("GET", "/", headers={"Accept-Encoding": "gzip"})

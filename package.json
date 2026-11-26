@@ -1,0 +1,25 @@
+{
+  "name": "promptwars-sentinel",
+  "version": "1.2.0",
+  "description": "AI-powered prompt security auditor, red-team battle simulator, and context-aware prompt optimizer",
+  "main": "server.py",
+  "scripts": {
+    "test": "python -m unittest discover tests",
+    "lint": "flake8",
+    "start": "python server.py"
+  },
+  "keywords": [
+    "ai",
+    "prompt-engineering",
+    "cybersecurity",
+    "adversarial-testing",
+    "prompt-injection",
+    "cloud-run"
+  ],
+  "author": "Tharundass R",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tharundass-svg/promptwars-sentinel.git"
+  }
+}
