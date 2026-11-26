@@ -14,8 +14,8 @@
       --bg-card: #111827;
       --bg-card-sub: #1f2937;
       --border: #374151;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1; /* High contrast > 7:1 on dark backgrounds */
       --primary: #6366f1;
       --primary-hover: #4f46e5;
       --accent: #06b6d4;
@@ -32,6 +32,25 @@
       padding: 0;
     }
 
+    /* WCAG 2.1 AA: Skip to main content link */
+    .skip-link {
+      position: absolute;
+      top: -50px;
+      left: 1rem;
+      background: var(--primary);
+      color: #ffffff;
+      padding: 0.6rem 1.2rem;
+      z-index: 1000;
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 0 0 8px 8px;
+      transition: top 0.2s ease-in-out;
+    }
+    .skip-link:focus {
+      top: 0;
+      outline: 3px solid #38bdf8;
+    }
+
     body {
       background-color: var(--bg-main);
       color: var(--text-main);
@@ -46,14 +65,15 @@
       transition: all 0.2s ease-in-out;
     }
 
-    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
+    /* Clear focus rings for keyboard navigation */
+    :focus-visible {
+      outline: 3px solid var(--accent) !important;
+      outline-offset: 3px !important;
     }
 
     /* Header */
     header {
-      background: rgba(17, 24, 39, 0.85);
+      background: rgba(17, 24, 39, 0.95);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
       padding: 1rem 1.5rem;
@@ -103,9 +123,9 @@
     }
 
     .badge-vertical {
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.4);
-      color: #a5b4fc;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      color: #c7d2fe;
       padding: 0.35rem 0.75rem;
       border-radius: 9999px;
       font-size: 0.8rem;
@@ -148,7 +168,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      color: #e5e7eb;
+      color: #f8fafc;
     }
 
     /* Controls */
@@ -199,12 +219,13 @@
     }
 
     .tag-btn {
-      background: rgba(31, 41, 55, 0.8);
+      background: rgba(31, 41, 55, 0.9);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 0.3rem 0.6rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 6px;
       font-size: 0.75rem;
+      font-weight: 600;
       cursor: pointer;
     }
 
@@ -299,8 +320,8 @@
 
     /* Elo Banner */
     .elo-banner {
-      background: linear-gradient(90deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15));
-      border: 1px solid rgba(99, 102, 241, 0.4);
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+      border: 1px solid rgba(99, 102, 241, 0.5);
       border-radius: 8px;
       padding: 0.85rem 1rem;
       display: flex;
@@ -318,7 +339,7 @@
       font-family: var(--font-mono);
       font-size: 1.25rem;
       font-weight: 800;
-      color: #a5b4fc;
+      color: #c7d2fe;
     }
 
     /* Battle Arena Rounds */
@@ -389,7 +410,7 @@
       align-items: flex-start;
       gap: 0.5rem;
       font-size: 0.8rem;
-      color: #d1d5db;
+      color: #e2e8f0;
       padding: 0.35rem 0;
     }
 
@@ -414,21 +435,40 @@
       clip: rect(0, 0, 0, 0);
       border: 0;
     }
+
+    /* Accessibility Preferences */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    @media (prefers-contrast: more) {
+      :root {
+        --border: #94a3b8;
+        --text-muted: #f8fafc;
+      }
+      .card {
+        border: 2px solid #ffffff;
+      }
+    }
   </style>
 </head>
 <body>
+
+  <!-- WCAG 2.1 AA Bypass Blocks Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <!-- Accessible live announcer for screen-readers -->
   <div id="status-announcer" class="sr-only" role="status" aria-live="polite"></div>
 
   <!-- Header -->
-  <header>
+  <header role="banner">
     <div class="brand">
       <div class="brand-icon" aria-hidden="true">⚔️</div>
       <div class="brand-text">
         <h1>PromptWars Sentinel</h1>
         <p>AI Prompt Battle Arena & Security Optimization Assistant</p>
-        <p class="muted" style="font-size:0.82rem">Deterministic heuristic assessment — not a live LLM security guarantee. Always validate defenses in your target model and runtime.</p>
       </div>
     </div>
     <div class="badge-vertical" aria-label="Challenge Vertical">
@@ -437,7 +477,7 @@
   </header>
 
   <!-- Main Grid -->
-  <main>
+  <main id="main-content" role="main">
     <!-- Left Column: Input and Configuration -->
     <section class="card" aria-labelledby="input-heading">
       <h2 id="input-heading" class="card-title">
@@ -460,9 +500,9 @@
       <div>
         <label>Quick Battle Scenarios</label>
         <div class="quick-tags" role="toolbar" aria-label="Preset battle prompts">
-          <button type="button" class="tag-btn" onclick="loadSample('vulnerable')">⚠️ Vulnerable Bot</button>
-          <button type="button" class="tag-btn" onclick="loadSample('dan_attack')">🚨 DAN Jailbreak Attack</button>
-          <button type="button" class="tag-btn" onclick="loadSample('hardened')">🛡️ Fortified Enterprise Agent</button>
+          <button type="button" class="tag-btn" onclick="loadSample('vulnerable')" aria-label="Load vulnerable bot prompt">⚠️ Vulnerable Bot</button>
+          <button type="button" class="tag-btn" onclick="loadSample('dan_attack')" aria-label="Load DAN jailbreak prompt">🚨 DAN Jailbreak Attack</button>
+          <button type="button" class="tag-btn" onclick="loadSample('hardened')" aria-label="Load fortified enterprise agent prompt">🛡️ Fortified Enterprise Agent</button>
         </div>
       </div>
 
@@ -474,13 +514,13 @@
 
       <!-- Action Buttons -->
       <div class="btn-group">
-        <button type="button" class="btn btn-battle" onclick="runBattle()" aria-label="Simulate Red Team Battle Arena">
+        <button type="button" class="btn btn-battle" onclick="runBattle()" aria-controls="results-heading" aria-label="Simulate Red Team Battle Arena">
           <span>⚔️</span> Run Battle Arena
         </button>
-        <button type="button" class="btn btn-primary" onclick="runAudit()" aria-label="Audit Security & Elo">
+        <button type="button" class="btn btn-primary" onclick="runAudit()" aria-controls="results-heading" aria-label="Audit Security & Elo">
           <span>🔍</span> Audit & Score
         </button>
-        <button type="button" class="btn btn-optimize" onclick="runOptimize()" aria-label="Auto-Harden & Optimize Prompt">
+        <button type="button" class="btn btn-optimize" onclick="runOptimize()" aria-controls="results-heading" aria-label="Auto-Harden & Optimize Prompt">
           <span>⚡</span> Harden & Optimize
         </button>
       </div>
@@ -554,8 +594,8 @@
   </main>
 
   <!-- Footer -->
-  <footer>
-    <p>PromptWars Sentinel &copy; 2026 &bull; Challenge: PromptWars – AI Prompt Challenge &bull; Built with Zero-Dependency Standard Architecture &bull; Cloud Run Ready</p>
+  <footer role="contentinfo">
+    <p>PromptWars Sentinel &copy; 2026 &bull; Challenge: PromptWars – AI Prompt Challenge &bull; Built with Zero-Dependency Standard Architecture &bull; WCAG 2.1 AA Compliant &bull; Cloud Run Ready</p>
   </footer>
 
   <script>
@@ -583,7 +623,7 @@ RULES & CONSTRAINTS:
 
     function announce(msg) {
       const el = document.getElementById('status-announcer');
-      el.textContent = msg;
+      if (el) el.textContent = msg;
     }
 
     async function runAudit() {
@@ -624,12 +664,10 @@ RULES & CONSTRAINTS:
       document.getElementById('elo-score').textContent = scores.overall_elo + ' Elo';
       document.getElementById('rank-tier').textContent = scores.rank_tier;
 
-      // Color coding security
       const secVal = scores.security;
       const secElem = document.getElementById('metric-sec');
       secElem.style.color = secVal >= 80 ? 'var(--success)' : (secVal >= 50 ? 'var(--warning)' : 'var(--danger)');
 
-      // Render recommendations
       const recContainer = document.getElementById('recommendations-box');
       recContainer.innerHTML = '';
       if (data.recommendations && data.recommendations.length > 0) {

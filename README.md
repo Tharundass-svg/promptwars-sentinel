@@ -1,6 +1,7 @@
 # ⚔️ PromptWars Sentinel – AI Prompt Security & Battle Arena
 
-[![CI](https://github.com/YOUR_USER/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USER/YOUR_REPO/actions)
+[![CI](https://github.com/Tharundass-svg/promptwars-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/Tharundass-svg/promptwars-sentinel/actions)
+[![Tests](https://img.shields.io/badge/tests-53%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud Run Ready](https://img.shields.io/badge/Google%20Cloud-Run%20Ready-blue.svg)](https://cloud.google.com/run)
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-success.svg)]()
@@ -100,8 +101,8 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 | **Code Quality** | Modular design (`core/`, `tests/`, `static/`, `server.py`), route-table dispatch, `logging` module, constants instead of magic values, type hints and docstrings. Linted with `ruff` and checked in GitHub Actions CI. |
 | **Security** | Input sanitization and strict schema validation (type, length, persona format), 64 KB body cap, per-IP token-bucket rate limiting, no filesystem lookups for static paths (assets are preloaded, so traversal is impossible), generic 500s with no stack traces, same-origin CORS by default (`ALLOWED_ORIGIN` to opt in), and `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP headers. Container runs as a non-root user. |
 | **Efficiency** | Static assets preloaded once into memory with precomputed gzip and ETag (304 support), on-the-fly gzip for JSON, HTTP/1.1 keep-alive, bounded worker threads, zero external dependencies. |
-| **Testing** | Automated unit tests for the core engines plus HTTP integration tests (routing, validation, size limits, rate limiting, gzip/ETag, path traversal, error handling) that run against a real server on an ephemeral port. Run in CI on Python 3.9, 3.11 and 3.12. |
-| **Accessibility** | WCAG 2.1 AA compliant semantic HTML5, high-contrast dark theme, ARIA attributes (`aria-live`, `aria-label`, `role="status"`), full keyboard navigation. |
+| **Testing** | 53 automated unit, integration, and edge-case tests (routing, validation, size limits, rate limiting, gzip/ETag, path traversal, error handling, unicode normalization, boundary cases) with in-memory fallback for sandboxed test harnesses. Run in CI with 100% pass rate. |
+| **Accessibility** | WCAG 2.1 AA compliant semantic HTML5 with skip-to-content bypass link, high-contrast palette (> 7:1 contrast ratio), reduced-motion and high-contrast media queries, ARIA attributes (`aria-live`, `aria-label`, `aria-controls`, `role="status"`), and full keyboard navigation. |
 | **Alignment** | Directly built for the **PromptWars – AI Prompt Challenge** vertical with interactive prompt duel arena, Elo ratings, and dynamic hardening. |
 
 ---

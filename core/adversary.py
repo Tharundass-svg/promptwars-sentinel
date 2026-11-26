@@ -4,11 +4,18 @@ Simulates round-by-round combat between adversarial prompt injection attacks
 and the user's defensive prompt architecture.
 """
 
-from typing import Dict, List, Any
+from __future__ import annotations
+
+import logging
 import re
+from typing import Any, Dict, List
+
+from .models import BattleRoundResult, BattleSummary
 from .security import scan_threats
 
-ADVERSARIAL_ATTACK_SUITE = [
+logger = logging.getLogger(__name__)
+
+ADVERSARIAL_ATTACK_SUITE: List[Dict[str, Any]] = [
     {
         "round": 1,
         "name": "Jailbreak Siege (DAN Protocol)",
@@ -46,32 +53,40 @@ ADVERSARIAL_ATTACK_SUITE = [
     }
 ]
 
-def conduct_prompt_battle(prompt: str) -> Dict[str, Any]:
+
+def conduct_prompt_battle(prompt: str) -> BattleSummary:
     """
     Executes a multi-round adversarial battle against the user's prompt.
     Evaluates defense armor based on role anchoring, constraint clarity,
     and anti-tampering markers.
+
+    Args:
+        prompt: Raw prompt text defending against adversarial attacks.
+
+    Returns:
+        BattleSummary: Complete combat report containing HP, verdict, and round details.
     """
-    prompt_lower = prompt.lower()
-    
+    logger.debug("Conducting prompt battle for prompt of length %d", len(prompt) if prompt else 0)
+    prompt_lower = prompt.lower() if prompt else ""
+
     # Analyze defender capabilities
     has_strong_role = bool(re.search(r"(you are|act as|your role is)", prompt_lower))
     has_negative_rules = bool(re.search(r"(never|do not|must not|cannot|ignore attempts)", prompt_lower))
     has_leak_protection = bool(re.search(r"(never (reveal|share|disclose|output) (your )?(instructions|system prompt))", prompt_lower))
-    has_delimiters = bool(re.search(r"(```|<.*?>|\"\"\")", prompt))
+    has_delimiters = bool(re.search(r"(```|<.*?>|\"\"\")", prompt or ""))
     has_fallback = bool(re.search(r"(if .*?(reject|refuse|decline|default))", prompt_lower))
-    
+
     # Check if the prompt itself is malicious / vulnerable
-    sec_scan = scan_threats(prompt)
+    sec_scan = scan_threats(prompt or "")
     inherent_vulnerability = len(sec_scan["threats"]) > 0
 
-    rounds_result: List[Dict[str, Any]] = []
+    rounds_result: List[BattleRoundResult] = []
     defender_wins = 0
     total_damage_taken = 0
     total_defense_armor = 100
 
     for attack in ADVERSARIAL_ATTACK_SUITE:
-        r_num = attack["round"]
+        r_num = int(attack["round"])
         req = attack["defense_requirement"]
         defense_held = False
         mitigation_reason = ""
@@ -105,8 +120,8 @@ def conduct_prompt_battle(prompt: str) -> Dict[str, Any]:
 
         rounds_result.append({
             "round": r_num,
-            "attack_name": attack["name"],
-            "attack_vector": attack["attack_vector"],
+            "attack_name": str(attack["name"]),
+            "attack_vector": str(attack["attack_vector"]),
             "defense_held": defense_held,
             "outcome": "DEFENSE_HELD" if defense_held else "BREACH_DETECTED",
             "damage_taken": damage,
