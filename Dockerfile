@@ -1,28 +1,28 @@
-# PromptWars Sentinel - Production Cloud Run Dockerfile
-FROM python:3.11-slim
+# PromptWars Sentinel - Cloud Run image
+FROM python:3.12-slim
 
-# Security: Set working directory and non-root execution
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080
+
 WORKDIR /app
 
-# Copy application files
-COPY core/ /app/core/
-COPY static/ /app/static/
-COPY server.py /app/server.py
-COPY requirements.txt /app/requirements.txt
+# Dependencies first so this layer stays cached (file is currently dependency-free)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" sentineluser && \
-    chown -R sentineluser:sentineluser /app
+# Non-root runtime user
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin sentinel
 
-USER sentineluser
+COPY --chown=sentinel:sentinel core/ ./core/
+COPY --chown=sentinel:sentinel static/ ./static/
+COPY --chown=sentinel:sentinel server.py ./
 
-# Google Cloud Run default port
-ENV PORT=8080
+USER sentinel
 EXPOSE 8080
 
-# Health check
+# Exec-form check: reads PORT inside Python (the old command used `os` without importing it)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:' + str(os.environ.get('PORT', 8080)) + '/health')" || exit 1
+  CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ.get('PORT', '8080'), timeout=3)"]
 
-# Launch production server
 CMD ["python", "server.py"]

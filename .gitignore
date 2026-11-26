@@ -42,3 +42,12 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+
+# Secrets
+.env.*
+*.pem
+*.key

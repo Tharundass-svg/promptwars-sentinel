@@ -1,10 +1,9 @@
 # ⚔️ PromptWars Sentinel – AI Prompt Security & Battle Arena
 
-[![Tests](https://img.shields.io/badge/tests-19%20passed-brightgreen.svg)]()
+[![CI](https://github.com/YOUR_USER/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USER/YOUR_REPO/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloud Run Ready](https://img.shields.io/badge/Google%20Cloud-Run%20Ready-blue.svg)](https://cloud.google.com/run)
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-success.svg)]()
-[![Repo Size](https://img.shields.io/badge/repo%20size-%3C150%20KB-blueviolet.svg)]()
 
 > A smart, context-aware prompt engineering, red-teaming battle simulator, and defense hardening assistant built for the **PromptWars – AI Prompt Challenge**.
 
@@ -21,7 +20,7 @@
 ## 2. Approach and Core Logic
 
 ### Architecture Overview
-PromptWars Sentinel uses a zero-external-dependency, modular Python architecture delivering sub-10ms response latency and 100% test reliability:
+PromptWars Sentinel uses a zero-external-dependency, modular Python architecture with in-memory static assets, gzip + ETag caching and a fully tested HTTP layer:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -31,7 +30,7 @@ PromptWars Sentinel uses a zero-external-dependency, modular Python architecture
                                │ HTTP REST API (Port 8080)
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    PromptWars Server                         │
-│           (Threaded HTTPServer with CORS & Security)        │
+│  (Bounded-thread HTTP/1.1, rate limiting, gzip/ETag cache)  │
 ├──────────────────────────────┬──────────────────────────────┤
 │ Core Engine                  │ Functions                    │
 ├──────────────────────────────┼──────────────────────────────┤
@@ -80,7 +79,7 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 ## 4. Assumptions Made
 
 1. **Zero External Dependency Guarantee**: To ensure judges and evaluation sandboxes can run the project without dependency resolution or network timeout errors, the backend relies strictly on the Python standard library.
-2. **Repository Size Strict Cap (< 10 MB)**: The entire codebase, frontend assets, tests, and documentation are kept under **150 KB** (well within the hackathon's 10 MB limit).
+2. **Small Footprint**: Source, assets, tests and docs are kept deliberately small to stay well within the hackathon's repository size limit.
 3. **Cloud Run Native**: Built to read `PORT` from the environment (defaulting to 8080) with a non-root Linux container user conforming to Google Cloud Run standards.
 4. **Deterministic Heuristics + Extensibility**: Evaluates prompt safety and quality deterministically through heuristic rule engines and syntactic parsing, with an architectural interface ready to connect to live LLM APIs (Gemini/OpenAI) when API keys are supplied.
 
@@ -90,10 +89,10 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 
 | Focus Area | Implementation Detail |
 |---|---|
-| **Code Quality** | Modular design separated into `core/`, `tests/`, `static/`, and `server.py`. Strict PEP 8 styling, type annotations, and descriptive docstrings. |
-| **Security** | Input sanitization, XSS mitigation, regex threat classification, secure HTTP headers (`X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, CORS policy). |
-| **Efficiency** | Sub-10ms response time per audit, zero external dependencies, lightweight memory footprint (< 30 MB RAM). |
-| **Testing** | 19 automated unit & logic tests covering sanitization, threat detection, persona weighting, battle rounds, and prompt optimization. 100% pass rate. |
+| **Code Quality** | Modular design (`core/`, `tests/`, `static/`, `server.py`), route-table dispatch, `logging` module, constants instead of magic values, type hints and docstrings. Linted with `ruff` and checked in GitHub Actions CI. |
+| **Security** | Input sanitization and strict schema validation (type, length, persona format), 64 KB body cap, per-IP token-bucket rate limiting, no filesystem lookups for static paths (assets are preloaded, so traversal is impossible), generic 500s with no stack traces, same-origin CORS by default (`ALLOWED_ORIGIN` to opt in), and `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP headers. Container runs as a non-root user. |
+| **Efficiency** | Static assets preloaded once into memory with precomputed gzip and ETag (304 support), on-the-fly gzip for JSON, HTTP/1.1 keep-alive, bounded worker threads, zero external dependencies. |
+| **Testing** | Automated unit tests for the core engines plus HTTP integration tests (routing, validation, size limits, rate limiting, gzip/ETag, path traversal, error handling) that run against a real server on an ephemeral port. Run in CI on Python 3.9, 3.11 and 3.12. |
 | **Accessibility** | WCAG 2.1 AA compliant semantic HTML5, high-contrast dark theme, ARIA attributes (`aria-live`, `aria-label`, `role="status"`), full keyboard navigation. |
 | **Alignment** | Directly built for the **PromptWars – AI Prompt Challenge** vertical with interactive prompt duel arena, Elo ratings, and dynamic hardening. |
 
@@ -110,11 +109,14 @@ python server.py
 ```
 Open **`http://localhost:8080`** in your browser.
 
+### Configuration (optional environment variables)
+`PORT` (8080), `LOG_LEVEL` (INFO), `ALLOWED_ORIGIN` (unset = same-origin only), `RATE_LIMIT_PER_SEC` (5), `RATE_LIMIT_BURST` (20), `MAX_THREADS` (64).
+
 ### Run Automated Tests:
 ```bash
 python -m unittest discover tests
 ```
-*All 19 tests will pass in < 0.05 seconds.*
+Tests also run automatically on every push via GitHub Actions.
 
 ---
 

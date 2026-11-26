@@ -1,0 +1,15 @@
+[project]
+name = "promptwars-sentinel"
+version = "1.1.0"
+requires-python = ">=3.9"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM"]
+ignore = ["S101", "S104", "UP006", "UP035", "UP007", "UP037", "S105"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B011"]
