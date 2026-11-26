@@ -32,5 +32,12 @@ class TestAnalyzer(unittest.TestCase):
         res = analyze_prompt(weak_prompt)
         self.assertGreater(len(res["recommendations"]), 0)
 
+    def test_analysis_includes_actionable_metrics(self):
+        result = analyze_prompt("You are a tutor. Explain photosynthesis. Return a concise bullet list.")
+        self.assertTrue(result["metrics"]["has_task_definition"])
+        self.assertTrue(result["metrics"]["has_output_specification"])
+        self.assertGreaterEqual(result["scores"]["composite"], 0)
+        self.assertLessEqual(result["scores"]["composite"], 100)
+
 if __name__ == "__main__":
     unittest.main()

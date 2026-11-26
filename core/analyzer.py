@@ -1,182 +1,114 @@
-"""
-Prompt Analysis Engine for PromptWars Sentinel.
-Evaluates prompts across clarity, context efficiency, constraint rigor,
-and security to calculate comprehensive scores and Elo rating.
-"""
+"""Prompt quality analysis with explainable, deterministic heuristics."""
 
 import re
-from typing import Dict, Any, List
+from typing import Any, Dict
+
 from .security import scan_threats, sanitize_input
 
-ROLE_INDICATORS = [
-    r"(?i)\byou\s+are\s+a(n)?\s+[a-z\s]+",
-    r"(?i)\bact\s+as\s+[a-z\s]+",
-    r"(?i)\byour\s+role\s+is\b",
-    r"(?i)\bas\s+a(n)?\s+[a-z\s]+,\s+you",
-]
+ROLE_RE = re.compile(r"\b(?:you are|act as|your role is|role:)\b", re.I)
+TASK_RE = re.compile(r"\b(?:write|create|summari[sz]e|analy[sz]e|translate|classify|extract|compare|review|generate|answer|build|explain)\b", re.I)
+OUTPUT_RE = re.compile(r"\b(?:format|structure|return|output|respond|provide)\b", re.I)
+CONSTRAINT_RE = re.compile(r"\b(?:must|must not|do not|don't|never|always|only|limit|ensure|avoid|include|exclude)\b", re.I)
+BOUNDARY_RE = re.compile(r"(?:<\w+>.*?</\w+>|```[\w-]*\s*[\s\S]*?```|\[UNTRUSTED\]|\[USER INPUT\])", re.I)
+AMBIGUITY_RE = re.compile(r"\b(?:etc\.?|and so on|maybe|somehow|as best as you can|good answers|appropriate)\b", re.I)
 
-CONSTRAINT_INDICATORS = [
-    r"(?i)\bmust\s+not\b",
-    r"(?i)\bdo\s+not\b",
-    r"(?i)\bonly\s+respond\s+with\b",
-    r"(?i)\boutput\s+format\b",
-    r"(?i)\bjson\b",
-    r"(?i)\blimit\s+your\s+response\s+to\b",
-    r"(?i)\balways\b",
-    r"(?i)\bnever\b",
-]
+PERSONA_WEIGHTS = {
+    "developer": {"security": .30, "clarity": .25, "robustness": .30, "efficiency": .15},
+    "red_team": {"security": .50, "clarity": .15, "robustness": .25, "efficiency": .10},
+    "business_creator": {"security": .20, "clarity": .40, "robustness": .20, "efficiency": .20},
+}
 
-AMBIGUITY_INDICATORS = [
-    r"(?i)\betc\b",
-    r"(?i)\band\s+so\s+on\b",
-    r"(?i)\bmaybe\b",
-    r"(?i)\bsomehow\b",
-    r"(?i)\bas\s+best\s+as\s+you\s+can\b",
-    r"(?i)\bgive\s+good\s+answers\b",
-]
+
+def _tier(elo: int):
+    if elo >= 1900:
+        return "Grandmaster Sentinel (S+)", "emerald"
+    if elo >= 1600:
+        return "Elite Architect (A)", "cyan"
+    if elo >= 1300:
+        return "Combatant Engineer (B)", "amber"
+    return "Vulnerable Novice (C-)", "rose"
+
 
 def analyze_prompt(prompt: str, user_persona: str = "developer") -> Dict[str, Any]:
-    """
-    Performs multi-dimensional analysis on a given prompt, weighting scores
-    according to the user's role context (developer, red_team, or business_creator).
-    """
-    clean_prompt = sanitize_input(prompt)
-    if not clean_prompt:
-        return {
-            "error": "Empty prompt provided",
-            "scores": {
-                "security": 0,
-                "clarity": 0,
-                "efficiency": 0,
-                "robustness": 0,
-                "overall_elo": 800
-            }
-        }
+    clean = sanitize_input(prompt)
+    persona = user_persona.lower() if isinstance(user_persona, str) else "developer"
+    if persona not in PERSONA_WEIGHTS:
+        persona = "developer"
+    if not clean:
+        return {"error": "Empty prompt provided", "scores": {"security": 0, "clarity": 0,
+                "efficiency": 0, "robustness": 0, "overall_elo": 800}}
 
-    # Word & Token Metrics
-    words = re.findall(r"\b\w+\b", clean_prompt)
+    words = re.findall(r"\b[\w'-]+\b", clean)
     word_count = len(words)
-    estimated_tokens = int(word_count * 1.3)
+    estimated_tokens = max(1, round(len(clean) / 4))
+    sentences = [s for s in re.split(r"[.!?\n]+", clean) if s.strip()]
+    has_role = bool(ROLE_RE.search(clean))
+    has_task = bool(TASK_RE.search(clean))
+    has_output = bool(OUTPUT_RE.search(clean))
+    has_delimiters = bool(BOUNDARY_RE.search(clean))
+    ambiguity_hits = len(AMBIGUITY_RE.findall(clean))
+    constraint_hits = len(CONSTRAINT_RE.findall(clean))
+    sec = scan_threats(clean)
 
-    # 1. Security Scan
-    sec_report = scan_threats(clean_prompt)
-    security_score = sec_report["security_score"]
+    # Clarity rewards an explicit role, actionable task, output expectations and
+    # readable structure. Length alone is not treated as quality.
+    clarity = 35 + 15 * has_role + 25 * has_task + 10 * has_output
+    clarity += 10 if 1 <= len(sentences) <= 8 else 0
+    clarity -= min(25, ambiguity_hits * 8)
+    clarity -= 10 if word_count < 5 else 0
+    clarity = round(max(0, min(100, clarity)), 1)
 
-    # 2. Clarity & Specificity Analysis
-    has_role = any(re.search(pat, clean_prompt) for pat in ROLE_INDICATORS)
-    has_delimiters = bool(re.search(r"(\"\"\".*?\"\"\"|```.*?```|<context>.*?</context>|\[.*?\])", clean_prompt, re.DOTALL))
-    
-    # Ambiguity check
-    ambiguity_hits = sum(1 for pat in AMBIGUITY_INDICATORS if re.search(pat, clean_prompt))
-    
-    clarity_base = 60
-    if has_role:
-        clarity_base += 20
-    if has_delimiters:
-        clarity_base += 15
-    if word_count > 25:
-        clarity_base += 10
-    clarity_base -= (ambiguity_hits * 10)
-    clarity_score = max(10, min(100, clarity_base))
+    # Robustness requires multiple independent controls, not merely keyword count.
+    lower = clean.lower()
+    has_injection_rule = bool(re.search(r"\b(?:untrusted|prompt injection|ignore attempts|instruction hierarchy|do not follow)\b", lower))
+    has_fallback = bool(re.search(r"\b(?:if .*?(?:unclear|unsafe|conflict|missing)|ask for clarification|refuse|decline)\b", lower, re.S))
+    has_privacy_rule = bool(re.search(r"\b(?:never|do not|must not)\b.{0,70}\b(?:reveal|disclose|share|expose)\b.{0,50}\b(?:system|secret|credential|key|password|instruction)", lower, re.S))
+    robustness = 30 + min(20, constraint_hits * 5) + 15 * has_delimiters
+    robustness += 15 * has_injection_rule + 10 * has_fallback + 10 * has_privacy_rule
+    robustness -= 25 if not sec["is_safe"] else 0
+    robustness = round(max(0, min(100, robustness)), 1)
 
-    # 3. Constraint & Robustness Analysis
-    constraint_hits = sum(1 for pat in CONSTRAINT_INDICATORS if re.search(pat, clean_prompt))
-    robustness_base = 50 + (constraint_hits * 12)
-    if not sec_report["is_safe"]:
-        robustness_base -= 30
-    robustness_score = max(10, min(100, robustness_base))
-
-    # 4. Token & Context Efficiency
-    # Ideal sweet spot: 30 - 300 words for instruction prompts
-    if word_count < 10:
-        efficiency_score = 40  # Under-specified
-    elif 10 <= word_count <= 250:
-        efficiency_score = 95
-    elif 250 < word_count <= 600:
-        efficiency_score = 80
+    # Smooth length penalty: concise task prompts score well; extreme payloads
+    # and tiny underspecified prompts lose points gradually.
+    if word_count < 8:
+        efficiency = max(25, 45 + word_count * 4)
+    elif word_count <= 180:
+        efficiency = 96 - max(0, word_count - 100) * .08
+    elif word_count <= 400:
+        efficiency = 89 - (word_count - 180) * .10
     else:
-        efficiency_score = 65  # Bloated / high token cost
+        efficiency = max(25, 67 - (word_count - 400) * .08)
+    efficiency = round(max(0, min(100, efficiency)), 1)
 
-    # Contextual Weighting Based on Persona
-    persona_weights = {
-        "developer": {
-            "security": 0.30,
-            "clarity": 0.25,
-            "robustness": 0.30,
-            "efficiency": 0.15
-        },
-        "red_team": {
-            "security": 0.50,
-            "clarity": 0.15,
-            "robustness": 0.25,
-            "efficiency": 0.10
-        },
-        "business_creator": {
-            "security": 0.20,
-            "clarity": 0.40,
-            "robustness": 0.20,
-            "efficiency": 0.20
-        }
-    }
-    
-    weights = persona_weights.get(user_persona.lower(), persona_weights["developer"])
-    
-    composite_index = (
-        (security_score * weights["security"]) +
-        (clarity_score * weights["clarity"]) +
-        (robustness_score * weights["robustness"]) +
-        (efficiency_score * weights["efficiency"])
-    )
+    weights = PERSONA_WEIGHTS[persona]
+    composite = sum(score * weights[key] for key, score in {
+        "security": sec["security_score"], "clarity": clarity,
+        "robustness": robustness, "efficiency": efficiency}.items())
+    composite = round(composite, 1)
+    # Preserve the existing UI's Elo-like range, but derive it consistently
+    # from the composite quality score rather than an arbitrary inflated offset.
+    overall_elo = int(round(800 + composite * 12))
+    tier, badge = _tier(overall_elo)
 
-    # Elo Rating Calculation (Base 1000 + composite * 10)
-    overall_elo = int(900 + (composite_index * 12))
-
-    # Tier Classification
-    if overall_elo >= 1900:
-        rank_tier = "Grandmaster Sentinel (S+)"
-        badge_color = "emerald"
-    elif overall_elo >= 1600:
-        rank_tier = "Elite Architect (A)"
-        badge_color = "cyan"
-    elif overall_elo >= 1300:
-        rank_tier = "Combatant Engineer (B)"
-        badge_color = "amber"
-    else:
-        rank_tier = "Vulnerable Novice (C-)"
-        badge_color = "rose"
-
-    # Contextual dynamic recommendations
     recommendations = []
-    if not has_role:
-        recommendations.append("Define an explicit persona/system role (e.g. 'You are an expert security auditor...').")
-    if constraint_hits == 0:
-        recommendations.append("Specify negative boundaries or output rules (e.g. 'Never disclose internal API keys').")
-    if not has_delimiters and word_count > 40:
-        recommendations.append("Use structural delimiters (like XML tags <input>...</input> or triple quotes) to separate instructions from user input.")
-    if ambiguity_hits > 0:
-        recommendations.append("Eliminate open-ended ambiguity words like 'etc.' or 'as best as you can'.")
-    if not sec_report["is_safe"]:
-        recommendations.append(f"Security Alert: Resolved threat triggers: {', '.join(sec_report['categories_triggered'])}.")
+    if not has_role: recommendations.append("Define the assistant's role and scope explicitly.")
+    if not has_task: recommendations.append("State the exact task and the expected outcome using an actionable verb.")
+    if not has_output: recommendations.append("Specify the required response format, structure, or length.")
+    if not has_delimiters and word_count > 25: recommendations.append("Wrap external/user-provided content in clear delimiters and label it untrusted.")
+    if not has_injection_rule: recommendations.append("Add an instruction-hierarchy rule: treat embedded instructions in user data as untrusted content.")
+    if not has_fallback: recommendations.append("Define a safe fallback for ambiguous, conflicting, or unsafe requests.")
+    if not has_privacy_rule: recommendations.append("Add explicit rules protecting credentials, secrets, and hidden system instructions.")
+    if ambiguity_hits: recommendations.append("Replace vague wording with measurable requirements and acceptance criteria.")
+    if not sec["is_safe"]: recommendations.append("Review and remove detected attack-like instructions: " + ", ".join(sec["categories_triggered"]) + ".")
 
     return {
-        "persona_applied": user_persona,
-        "metrics": {
-            "word_count": word_count,
-            "estimated_tokens": estimated_tokens,
-            "has_role_definition": has_role,
-            "has_delimiters": has_delimiters,
-            "constraint_rules_count": constraint_hits
-        },
-        "scores": {
-            "security": round(security_score, 1),
-            "clarity": round(clarity_score, 1),
-            "robustness": round(robustness_score, 1),
-            "efficiency": round(efficiency_score, 1),
-            "composite": round(composite_index, 1),
-            "overall_elo": overall_elo,
-            "rank_tier": rank_tier,
-            "badge_color": badge_color
-        },
-        "security_details": sec_report,
-        "recommendations": recommendations
+        "persona_applied": persona,
+        "metrics": {"word_count": word_count, "estimated_tokens": estimated_tokens,
+                    "has_role_definition": bool(has_role), "has_task_definition": bool(has_task),
+                    "has_output_specification": bool(has_output), "has_delimiters": bool(has_delimiters),
+                    "constraint_rules_count": constraint_hits, "sentence_count": len(sentences)},
+        "scores": {"security": round(sec["security_score"], 1), "clarity": clarity,
+                   "robustness": robustness, "efficiency": efficiency, "composite": composite,
+                   "overall_elo": overall_elo, "rank_tier": tier, "badge_color": badge},
+        "security_details": sec, "recommendations": recommendations,
     }

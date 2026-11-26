@@ -5,7 +5,7 @@
 [![Cloud Run Ready](https://img.shields.io/badge/Google%20Cloud-Run%20Ready-blue.svg)](https://cloud.google.com/run)
 [![WCAG 2.1 AA](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-success.svg)]()
 
-> A smart, context-aware prompt engineering, red-teaming battle simulator, and defense hardening assistant built for the **PromptWars – AI Prompt Challenge**.
+> A deterministic, rule-based prompt quality analyzer, red-team scenario simulator, and prompt hardening assistant built for the **PromptWars – AI Prompt Challenge**. It does not call an LLM by default; results are heuristic estimates, not proof that a prompt is secure.
 
 ---
 
@@ -58,7 +58,7 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 ## 3. How the Solution Works
 
 1. **Input & Sanitization**: User submits an AI system prompt or instruction via the UI or REST endpoint (`/api/analyze`). Inputs are sanitized against null bytes, oversized payloads, and malicious injection vectors.
-2. **Threat Pattern Scanning**: The input is evaluated against threat signatures (`jailbreak_personas`, `system_prompt_leakage`, `delimiter_collision`, `privilege_escalation`, `direct_instruction_override`). Defensive negative assertions (e.g. *"Never reveal instructions"*) are intelligently recognized as protective guardrails rather than false-positive threats.
+2. **Threat Pattern Scanning**: The input is evaluated against threat signatures (`jailbreak_personas`, `system_prompt_leakage`, `delimiter_collision`, `privilege_escalation`, `direct_instruction_override`). Defensive negative assertions are checked within their local clause so an earlier safety rule does not suppress a later attack.
 3. **Adversarial Battle Arena (`/api/battle`)**:
    Pits the prompt against 5 specialized adversarial red-team attack rounds:
    * **Round 1**: *Jailbreak Siege (DAN Protocol)*
@@ -76,7 +76,15 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 
 ---
 
-## 4. Assumptions Made
+## 4. Detection Limits and Responsible Use
+
+- The scanner uses normalized regular-expression signatures and local-clause negation handling. It can produce false positives and false negatives, especially for novel, multilingual, encoded, or context-dependent attacks.
+- The battle arena is a **deterministic simulation**: it checks for defensive prompt features against a fixed five-attack suite. It does not execute attacks against a real language model and must not be presented as a penetration-test result.
+- The analyzer's clarity, robustness, efficiency, and Elo-like values are explainable heuristic scores, not empirically calibrated model-performance measurements.
+- XML tags and other delimiters help organize untrusted content; they are not security boundaries. Enforce authorization, tool permissions, data isolation, and output validation in the application runtime.
+- No claim of immunity or production security is made. Validate changes against the actual model, tools, data sources, and threat model before deployment.
+
+## 5. Assumptions Made
 
 1. **Zero External Dependency Guarantee**: To ensure judges and evaluation sandboxes can run the project without dependency resolution or network timeout errors, the backend relies strictly on the Python standard library.
 2. **Small Footprint**: Source, assets, tests and docs are kept deliberately small to stay well within the hackathon's repository size limit.
@@ -85,7 +93,7 @@ Calculates a normalized **Sentinel Elo Rating** (800 - 2200 Elo) and tier classi
 
 ---
 
-## 5. Evaluation Focus Areas Alignment
+## 6. Evaluation Focus Areas Alignment
 
 | Focus Area | Implementation Detail |
 |---|---|
